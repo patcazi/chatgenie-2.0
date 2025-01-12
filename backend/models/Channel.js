@@ -1,16 +1,26 @@
-const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = require('../config/dbConfig');
+const { Model } = require('sequelize');
 
-const Channel = sequelize.define('Channel', {
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-    },
-    description: {
-        type: DataTypes.STRING,
-        allowNull: true,
-    },
-});
+module.exports = (sequelize, DataTypes) => {
+    class Channel extends Model {
+        static associate(models) {
+            // Add any associations here if needed
+        }
+    }
 
-module.exports = Channel;
+    Channel.init({
+        name: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            unique: true,
+        },
+        description: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+    }, {
+        sequelize,
+        modelName: 'Channel'
+    });
+
+    return Channel;
+};

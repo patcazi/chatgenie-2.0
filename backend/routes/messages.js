@@ -1,7 +1,6 @@
 const express = require('express');
-const Message = require('../models/Message');
-const User = require('../models/User');
 const { Op } = require('sequelize');
+const db = require('../models');
 const socketUtils = require('../utils/socket');
 
 const router = express.Router();
@@ -10,13 +9,13 @@ const router = express.Router();
 router.get('/:channelId', async (req, res) => {
     try {
         console.log('User from token:', req.user);
-        const messages = await Message.findAll({
+        const messages = await db.Message.findAll({
             where: {
                 channelId: req.params.channelId,
                 type: 'channel'
             },
             include: [
-                { model: User, as: 'sender', attributes: ['username'] }
+                { model: db.User, as: 'sender', attributes: ['username'] }
             ],
             order: [['createdAt', 'ASC']]
         });
@@ -31,7 +30,7 @@ router.get('/:channelId', async (req, res) => {
 router.get('/direct/:userId', async (req, res) => {
     try {
         console.log('User from token:', req.user);
-        const messages = await Message.findAll({
+        const messages = await db.Message.findAll({
             where: {
                 type: 'direct',
                 [Op.or]: [
@@ -40,7 +39,7 @@ router.get('/direct/:userId', async (req, res) => {
                 ]
             },
             include: [
-                { model: User, as: 'sender', attributes: ['username'] }
+                { model: db.User, as: 'sender', attributes: ['username'] }
             ],
             order: [['createdAt', 'ASC']]
         });
@@ -56,17 +55,17 @@ router.post('/', async (req, res) => {
     try {
         console.log('User from token:', req.user);
         const { content, channelId } = req.body;
-        const message = await Message.create({
+        const message = await db.Message.create({
             content,
             channelId,
             type: 'channel',
             senderId: req.user.userId
         });
 
-        const messageWithUser = await Message.findOne({
+        const messageWithUser = await db.Message.findOne({
             where: { id: message.id },
             include: [
-                { model: User, as: 'sender', attributes: ['username'] }
+                { model: db.User, as: 'sender', attributes: ['username'] }
             ]
         });
 
@@ -84,29 +83,21 @@ router.post('/', async (req, res) => {
 // Send a direct message
 router.post('/direct', async (req, res) => {
     try {
-        console.log('\n=== Creating Direct Message ===');
         console.log('User from token:', req.user);
-        console.log('Request body:', req.body);
-
-        // Create the message
-        const message = await Message.create({
-            content: req.body.content,
+        const { content, receiverId } = req.body;
+        const message = await db.Message.create({
+            content,
             senderId: req.user.userId,
-            receiverId: req.body.receiverId,
+            receiverId,
             type: 'direct'
         });
 
-        console.log('Message created:', message.toJSON());
-
-        // Fetch the complete message with sender info
-        const messageWithUser = await Message.findOne({
+        const messageWithUser = await db.Message.findOne({
             where: { id: message.id },
             include: [
-                { model: User, as: 'sender', attributes: ['username'] }
+                { model: db.User, as: 'sender', attributes: ['username'] }
             ]
         });
-
-        console.log('Message with user:', messageWithUser.toJSON());
 
         // Get Socket.IO instance and online users
         const io = socketUtils.getIO();
@@ -114,35 +105,21 @@ router.post('/direct', async (req, res) => {
 
         // Get socket IDs for both sender and receiver
         const senderSocketId = onlineUsers.get(req.user.userId)?.socketId;
-        const receiverSocketId = onlineUsers.get(req.body.receiverId)?.socketId;
-
-        console.log('Socket IDs:', {
-            sender: { id: req.user.userId, socketId: senderSocketId },
-            receiver: { id: req.body.receiverId, socketId: receiverSocketId }
-        });
+        const receiverSocketId = onlineUsers.get(receiverId)?.socketId;
 
         // Emit to both users
         if (senderSocketId) {
-            console.log('Emitting to sender:', senderSocketId);
             io.to(senderSocketId).emit('message', messageWithUser);
-        } else {
-            console.log('Sender socket not found');
         }
 
         if (receiverSocketId) {
-            console.log('Emitting to receiver:', receiverSocketId);
             io.to(receiverSocketId).emit('message', messageWithUser);
-        } else {
-            console.log('Receiver socket not found');
         }
 
         res.status(201).json(messageWithUser);
     } catch (error) {
         console.error('Error creating direct message:', error);
-        res.status(500).json({ 
-            message: 'Error creating direct message',
-            error: error.message 
-        });
+        res.status(500).json({ message: 'Error creating direct message' });
     }
 });
 

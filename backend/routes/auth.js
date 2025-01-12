@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const db = require('../models');
 
 const router = express.Router();
 const JWT_SECRET = 'your-secret-key'; // In production, use environment variable
@@ -15,12 +15,12 @@ router.post('/register', async (req, res) => {
     }
 
     try {
-        const existingUser = await User.findOne({ where: { username } });
+        const existingUser = await db.User.findOne({ where: { username } });
         if (existingUser) {
             return res.status(409).json({ message: 'Username already taken.' });
         }
 
-        const newUser = await User.create({ username, password });
+        const newUser = await db.User.create({ username, password });
         
         // Create JWT token
         const token = jwt.sign(
@@ -49,7 +49,7 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        const user = await User.findOne({ where: { username } });
+        const user = await db.User.findOne({ where: { username } });
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }

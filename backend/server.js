@@ -2,8 +2,7 @@ const app = require('./app');
 const sequelize = require('./config/dbConfig');
 const http = require('http');
 const jwt = require('jsonwebtoken');
-const User = require('./models/User');
-const Channel = require('./models/Channel');
+const db = require('./models');
 const socketUtils = require('./utils/socket');
 
 const PORT = process.env.PORT || 4000;
@@ -19,9 +18,9 @@ const onlineUsers = socketUtils.onlineUsers;
 // Create default channel if none exist
 async function createDefaultChannel() {
     try {
-        const channels = await Channel.findAll();
+        const channels = await db.Channel.findAll();
         if (channels.length === 0) {
-            await Channel.create({
+            await db.Channel.create({
                 name: 'General',
                 description: 'General discussion channel'
             });
@@ -46,76 +45,69 @@ io.use((socket, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         console.log('Decoded token:', decoded);
         
-        User.findByPk(decoded.userId)
+        db.User.findByPk(decoded.userId)
             .then(user => {
                 if (!user) {
                     console.log('User not found:', decoded.userId);
                     return next(new Error('User not found'));
                 }
-                
                 socket.user = {
                     id: user.id,
-                    username: decoded.username // Include username from token
+                    username: user.username
                 };
-                console.log('Socket user set:', socket.user);
+                console.log('Socket authenticated for user:', socket.user);
                 next();
             })
             .catch(err => {
                 console.error('Error finding user:', err);
-                next(new Error('Database error'));
+                next(new Error('Authentication error'));
             });
     } catch (err) {
-        console.error('Token verification error:', err);
+        console.error('Token verification failed:', err);
         next(new Error('Authentication error'));
     }
 });
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-    console.log('New socket connected:', socket.id);
+    console.log('User connected:', socket.user);
     
-    if (!socket.user) {
-        console.log('No user data found for socket:', socket.id);
-        socket.disconnect();
-        return;
-    }
-
     // Add user to online users map
     onlineUsers.set(socket.user.id, {
-        id: socket.user.id,
-        username: socket.user.username,
+        ...socket.user,
         socketId: socket.id
     });
+    console.log('Updated online users:', Array.from(onlineUsers.values()));
     
-    console.log('User added to online users:', socket.user);
-    console.log('Current online users:', Array.from(onlineUsers.values()));
-
-    // Broadcast updated users list to all clients
+    // Broadcast updated user list to all clients
     io.emit('users', Array.from(onlineUsers.values()));
 
-    // Handle disconnection
+    // Handle getUsers event
+    socket.on('getUsers', () => {
+        console.log('getUsers requested by:', socket.user.username);
+        socket.emit('users', Array.from(onlineUsers.values()));
+    });
+
     socket.on('disconnect', () => {
-        console.log('Socket disconnected:', socket.id);
+        console.log('User disconnected:', socket.user);
         if (socket.user) {
-            console.log('Removing user from online users:', socket.user);
             onlineUsers.delete(socket.user.id);
+            console.log('Remaining online users:', Array.from(onlineUsers.values()));
             io.emit('users', Array.from(onlineUsers.values()));
         }
     });
 
-    // Handle incoming messages
-    socket.on('message', async (data) => {
-        try {
-            console.log('\n=== Received Message ===');
-            console.log('From user:', socket.user);
-            console.log('Message data:', data);
-
-            // Message will be saved and emitted by the message routes
-            // This handler is just for logging and verification
-        } catch (error) {
-            console.error('Error handling message:', error);
-            socket.emit('error', { message: 'Error handling message' });
+    // Handle direct messages
+    socket.on('message', (message) => {
+        console.log('Message received:', message);
+        if (message.type === 'direct') {
+            const recipientSocket = Array.from(onlineUsers.values())
+                .find(user => user.id === message.receiverId)?.socketId;
+            if (recipientSocket) {
+                io.to(recipientSocket).emit('message', message);
+            }
         }
+        socket.emit('message', message); // Send back to sender
     });
 });
 
