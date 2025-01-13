@@ -40,7 +40,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={!isAuthenticated ? <Login setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/chat" />} />
-          <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/chat" />} />
+          <Route path="/register" element={!isAuthenticated ? <Register setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/chat" />} />
           <Route path="/chat" element={isAuthenticated ? <Chat setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/" element={<Navigate to={isAuthenticated ? "/chat" : "/login"} />} />
         </Routes>
