@@ -1,3 +1,4 @@
+require('dotenv').config();
 const app = require('./app');
 const sequelize = require('./config/dbConfig');
 const http = require('http');
@@ -6,13 +7,19 @@ const db = require('./models');
 const socketUtils = require('./utils/socket');
 
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.IO using the utility
-const io = socketUtils.init(server);
+// Initialize Socket.IO using the utility with CORS settings
+const io = socketUtils.init(server, {
+  cors: {
+    origin: 'http://3.145.42.181:3000',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
 const onlineUsers = socketUtils.onlineUsers;
 
 // Create default channel if none exist
@@ -34,8 +41,6 @@ async function createDefaultChannel() {
 // Socket.IO middleware for authentication
 io.use((socket, next) => {
     const token = socket.handshake.auth.token;
-    console.log('Socket auth token:', token);
-    
     if (!token) {
         console.log('No token provided');
         return next(new Error('Authentication error'));
@@ -55,7 +60,6 @@ io.use((socket, next) => {
                     id: user.id,
                     username: user.username
                 };
-                console.log('Socket authenticated for user:', socket.user);
                 next();
             })
             .catch(err => {

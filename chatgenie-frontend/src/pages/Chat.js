@@ -18,6 +18,7 @@ import {
   Badge,
   Avatar,
   Popover,
+  Tooltip,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
@@ -25,6 +26,7 @@ import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import EmojiPicker from 'emoji-picker-react';
 import io from 'socket.io-client';
 import axios from 'axios';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 const drawerWidth = 240;
 
@@ -42,36 +44,50 @@ function Chat({ setIsAuthenticated }) {
   const [anchorEl, setAnchorEl] = useState(null);
 
   useEffect(() => {
+    if (socketConnected) {
+      console.log('Socket connection established');
+    } else {
+      console.log('Socket disconnected or not connected');
+    }
+  }, [socketConnected]);
+
+  useEffect(() => {
     const token = sessionStorage.getItem('token');
-    console.log('Connecting socket with token:', token);
-    
+    if (!token) return;
+
     const tokenData = JSON.parse(atob(token.split('.')[1]));
-    setCurrentUser({
+    const user = {
       id: tokenData.userId,
       username: tokenData.username
-    });
-    
-    const socket = io('http://localhost:4000', {
+    };
+    setCurrentUser(user);
+    console.log('Current user set:', user);
+
+    const socket = io('http://3.145.42.181:4000', {
       auth: { token },
       transports: ['websocket'],
       reconnection: true
     });
 
     socket.on('connect', () => {
-      console.log('Socket connected successfully');
+      console.log('Socket connected');
       setSocketConnected(true);
+      socket.emit('getUsers');
     });
 
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected');
       setSocketConnected(false);
+      setOnlineUsers([]);
     });
 
     socket.on('users', (users) => {
       console.log('Received users list:', users);
-      const filteredUsers = users.filter(user => user.id !== currentUser?.id);
-      console.log('Filtered users (excluding current user):', filteredUsers);
-      setOnlineUsers(filteredUsers);
+      if (user.id) {
+        const filteredUsers = users.filter(u => u.id !== user.id);
+        console.log('Filtered users (excluding current user):', filteredUsers);
+        setOnlineUsers(filteredUsers);
+      }
     });
 
     socket.on('message', (message) => {
@@ -82,10 +98,16 @@ function Chat({ setIsAuthenticated }) {
     setSocket(socket);
 
     return () => {
-      console.log('Disconnecting socket');
+      console.log('Cleaning up socket connection');
       socket.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    if (tabValue === 0) {
+      fetchChannels();
+    }
+  }, [tabValue]);
 
   useEffect(() => {
     if (currentChat.id) {
@@ -103,7 +125,7 @@ function Chat({ setIsAuthenticated }) {
 
   const fetchChannels = async () => {
     try {
-      const response = await axios.get('http://localhost:4000/api/channels', {
+      const response = await axios.get('http://3.145.42.181:4000/api/channels', {
         headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` },
       });
       setChannels(response.data);
@@ -117,7 +139,7 @@ function Chat({ setIsAuthenticated }) {
 
   const fetchChannelMessages = async (channelId) => {
     try {
-      const response = await axios.get(`http://localhost:4000/api/messages/${channelId}`, {
+      const response = await axios.get(`http://3.145.42.181:4000/api/messages/${channelId}`, {
         headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` },
       });
       setMessages(response.data);
@@ -128,7 +150,7 @@ function Chat({ setIsAuthenticated }) {
 
   const fetchDirectMessages = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:4000/api/messages/direct/${userId}`, {
+      const response = await axios.get(`http://3.145.42.181:4000/api/messages/direct/${userId}`, {
         headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` },
       });
       setMessages(response.data);
@@ -153,7 +175,7 @@ function Chat({ setIsAuthenticated }) {
 
       if (currentChat.type === 'channel') {
         response = await axios.post(
-          'http://localhost:4000/api/messages',
+          'http://3.145.42.181:4000/api/messages',
           {
             content: newMessage,
             channelId: currentChat.id,
@@ -165,7 +187,7 @@ function Chat({ setIsAuthenticated }) {
         );
       } else {
         response = await axios.post(
-          'http://localhost:4000/api/messages/direct',
+          'http://3.145.42.181:4000/api/messages/direct',
           {
             content: newMessage,
             receiverId: currentChat.id,
@@ -226,23 +248,28 @@ function Chat({ setIsAuthenticated }) {
             ChatGenie - {currentChat.type === 'channel' ? 'Channel' : 'Direct Message'}
           </Typography>
           {currentUser && (
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Badge
-                overlap="circular"
-                variant="dot"
-                color="success"
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-              >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                  {currentUser.username[0].toUpperCase()}
-                </Avatar>
-              </Badge>
-              <Typography sx={{ ml: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Tooltip title={socketConnected ? 'Connected' : 'Disconnected'}>
+                <Badge
+                  overlap="circular"
+                  variant="dot"
+                  color={socketConnected ? "success" : "error"}
+                  anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right',
+                  }}
+                >
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                    {currentUser.username[0].toUpperCase()}
+                  </Avatar>
+                </Badge>
+              </Tooltip>
+              <Typography>
                 {currentUser.username}
               </Typography>
+              <IconButton color="inherit" onClick={handleLogout} title="Logout">
+                <LogoutIcon />
+              </IconButton>
             </Box>
           )}
         </Toolbar>

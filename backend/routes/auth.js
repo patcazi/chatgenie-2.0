@@ -2,9 +2,10 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../models');
+require('dotenv').config();
 
 const router = express.Router();
-const JWT_SECRET = 'your-secret-key'; // In production, use environment variable
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Register endpoint
 router.post('/register', async (req, res) => {
@@ -20,7 +21,12 @@ router.post('/register', async (req, res) => {
             return res.status(409).json({ message: 'Username already taken.' });
         }
 
-        const newUser = await db.User.create({ username, password });
+        // Hash password before saving
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = await db.User.create({ 
+            username, 
+            password: hashedPassword 
+        });
         
         // Create JWT token
         const token = jwt.sign(
@@ -54,7 +60,7 @@ router.post('/login', async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
-        const isMatch = password === user.password; // TODO: Use bcrypt in production
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials.' });
         }

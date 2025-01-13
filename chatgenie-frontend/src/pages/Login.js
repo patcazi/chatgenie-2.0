@@ -29,7 +29,7 @@ function Login({ setIsAuthenticated }) {
     e.preventDefault();
     try {
       console.log('Attempting login with:', { username: formData.username });
-      const response = await axios.post('http://localhost:4000/api/auth/login', formData);
+      const response = await axios.post('http://3.145.42.181:4000/api/auth/login', formData);
       console.log('Login response:', response.data);
       sessionStorage.setItem('token', response.data.token);
       window.dispatchEvent(new Event('storage'));

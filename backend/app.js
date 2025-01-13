@@ -14,8 +14,15 @@ dotenv.config();
 // Initialize app
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS configuration
+app.use(cors({
+  origin: 'http://3.145.42.181:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Parse JSON bodies
 app.use(express.json());
 
 // Authentication middleware
@@ -28,9 +35,7 @@ const authenticateToken = (req, res, next) => {
     }
 
     try {
-        console.log('Received token:', token); // Debug log
-        const decoded = jwt.verify(token, 'your-secret-key');
-        console.log('Decoded token:', decoded); // Debug log
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         next();
     } catch (err) {
@@ -41,14 +46,22 @@ const authenticateToken = (req, res, next) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/messages', authenticateToken, messageRoutes); // Use the messaging route
-app.use('/api/channels', authenticateToken, channelRoutes); // Use the channels route
+app.use('/api/messages', authenticateToken, messageRoutes);
+app.use('/api/channels', authenticateToken, channelRoutes);
 
 // Base route
 app.get('/', (req, res) => {
     res.send('Welcome to ChatGenie 2.0 Backend!');
 });
 
-module.exports = app;
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ 
+        message: 'An internal server error occurred.',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
 
+module.exports = app;
 

@@ -1,18 +1,19 @@
 // dbConfig.js
+require('dotenv').config();
 const { Sequelize } = require('sequelize');
 const path = require('path');
 
-// 1. Resolve the exact DB file path
-const dbFilePath = path.resolve(__dirname, 'chatgenie.db');
+// Use environment variable for DB path, fallback to default if not set
+const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'chatgenie.db');
 
-// 2. Log the absolute path for clarity
-console.log("DB Path:", dbFilePath);
+// Log the database path being used
+console.log("DB Path:", dbPath);
 
-// 3. Initialize Sequelize with SQLite, enabling logging
+// Initialize Sequelize with SQLite
 const sequelize = new Sequelize({
   dialect: 'sqlite',
-  storage: dbFilePath,
-  logging: console.log, // Enable SQL logs
+  storage: dbPath,
+  logging: process.env.NODE_ENV !== 'production', // Only log in non-production
 });
 
 module.exports = sequelize;

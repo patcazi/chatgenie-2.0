@@ -37,7 +37,7 @@ function Register({ setIsAuthenticated }) {
 
     try {
       console.log('Sending registration request:', { username: formData.username }); // Debug log
-      const response = await axios.post('http://localhost:4000/api/auth/register', {
+      const response = await axios.post('http://3.145.42.181:4000/api/auth/register', {
         username: formData.username,
         password: formData.password,
       });

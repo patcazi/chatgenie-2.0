@@ -9,3 +9,16 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+chatgenie.db
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

@@ -2,16 +2,16 @@ let io;
 const onlineUsers = new Map();
 
 module.exports = {
-    init: function(server) {
+    init: function(server, options = {}) {
         io = require('socket.io')(server, {
-            cors: {
-                origin: ['http://localhost:3000', 'http://localhost:3001'],
+            cors: options.cors || {
+                origin: 'http://3.145.42.181:3000',
                 credentials: true
             },
-            pingTimeout: 60000, // How long to wait for pong before considering connection closed
-            pingInterval: 25000, // How often to ping the client
-            upgradeTimeout: 30000, // How long to wait for an upgrade to websocket
-            maxHttpBufferSize: 1e6 // 1MB max message size
+            pingTimeout: 60000,
+            pingInterval: 25000,
+            upgradeTimeout: 30000,
+            maxHttpBufferSize: 1e6
         });
         return io;
     },
