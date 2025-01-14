@@ -1,13 +1,21 @@
-require('dotenv').config();
-const app = require('./app');
-const sequelize = require('./config/dbConfig');
-const http = require('http');
-const jwt = require('jsonwebtoken');
-const db = require('./models');
-const socketUtils = require('./utils/socket');
+import dotenv from 'dotenv';
+import app from './app.js';
+import sequelize from './config/dbConfig.js';
+import http from 'http';
+import jwt from 'jsonwebtoken';
+import db from './models/index.js';
+import uploadRoutes from './routes/uploads.js';
+
+// Import socket utilities
+const socketUtils = require('./utils/socket.cjs');
+
+dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET;
+
+// Register the /upload route
+app.use('/upload', uploadRoutes);
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -15,7 +23,11 @@ const server = http.createServer(app);
 // Initialize Socket.IO using the utility with CORS settings
 const io = socketUtils.init(server, {
   cors: {
-    origin: 'http://3.145.42.181:3000',
+    origin: [
+        'http://3.145.42.181:3000',  // Production frontend
+        'http://localhost:3000',      // Development frontend
+        'http://localhost:3001'       // Alternative development port
+    ],
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -49,7 +61,7 @@ io.use((socket, next) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         console.log('Decoded token:', decoded);
-        
+
         db.User.findByPk(decoded.userId)
             .then(user => {
                 if (!user) {
@@ -75,7 +87,7 @@ io.use((socket, next) => {
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.user);
-    
+
     // Add user to online users map
     onlineUsers.set(socket.user.id, {
         ...socket.user,

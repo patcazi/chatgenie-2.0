@@ -1,9 +1,10 @@
-const express = require('express');
-const { Op } = require('sequelize');
-const db = require('../models');
-const socketUtils = require('../utils/socket');
-
+import express from 'express';
+import { Op } from 'sequelize';
+import db from '../models/index.js';
 const router = express.Router();
+
+// Import socket utilities
+const socketUtils = require('../utils/socket.cjs');
 
 // Get channel messages
 router.get('/:channelId', async (req, res) => {
@@ -123,4 +124,4 @@ router.post('/direct', async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

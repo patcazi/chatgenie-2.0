@@ -11,6 +11,12 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 
+// API base URL configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'http://3.145.42.181:4000'
+    : 'http://localhost:4000');
+
 function Login({ setIsAuthenticated }) {
   const [formData, setFormData] = useState({
     username: '',
@@ -29,7 +35,7 @@ function Login({ setIsAuthenticated }) {
     e.preventDefault();
     try {
       console.log('Attempting login with:', { username: formData.username });
-      const response = await axios.post('http://3.145.42.181:4000/api/auth/login', formData);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, formData);
       console.log('Login response:', response.data);
       sessionStorage.setItem('token', response.data.token);
       window.dispatchEvent(new Event('storage'));
@@ -98,7 +104,7 @@ function Login({ setIsAuthenticated }) {
               Sign In
             </Button>
             <Typography align="center">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link component={RouterLink} to="/register">
                 Sign Up
               </Link>
@@ -110,4 +116,4 @@ function Login({ setIsAuthenticated }) {
   );
 }
 
-export default Login; 
+export default Login;

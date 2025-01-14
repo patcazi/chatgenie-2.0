@@ -1,7 +1,13 @@
-// dbConfig.js
-require('dotenv').config();
-const { Sequelize } = require('sequelize');
-const path = require('path');
+import dotenv from 'dotenv';
+import { Sequelize } from 'sequelize';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+dotenv.config();
+
+// ES Module compatibility
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Use environment variable for DB path, fallback to default if not set
 const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'chatgenie.db');
@@ -16,4 +22,4 @@ const sequelize = new Sequelize({
   logging: process.env.NODE_ENV !== 'production', // Only log in non-production
 });
 
-module.exports = sequelize;
+export default sequelize;
